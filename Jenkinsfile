@@ -5,13 +5,16 @@ pipeline {
         jdk 'jdk21'
     }
 
+    environment {
+        DOCKER_IMAGE = "geetha1389/springboot-app:v1"
+        KUBECONFIG = "/var/lib/jenkins/.kube/config"
+    }
 
     stages {
 
         stage('Git Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/Geetha1389/devops-project.git'
-
             }
         }
 
@@ -23,7 +26,7 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t geetha1389/springboot-app:v1 .'
+                sh "docker build -t $DOCKER_IMAGE ."
             }
         }
 
@@ -34,21 +37,20 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker push geetha1389/springboot-app:v1'
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push $DOCKER_IMAGE
+                    '''
                 }
             }
         }
 
-
-         withEnv(["KUBECONFIG=/var/lib/jenkins/.kube/config"]) {
-         sh "kubectl apply -f k8s/deployment.yaml"
-}
         stage('Kubernetes Deploy') {
             steps {
-                sh 'kubectl apply -f k8s/deployment.yaml'
-                sh 'kubectl apply -f k8s/service.yaml'
+                sh '''
+                    kubectl apply -f k8s/deployment.yaml
+                    kubectl apply -f k8s/service.yaml
+                '''
             }
         }
     }
